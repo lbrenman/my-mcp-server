@@ -1,3 +1,6 @@
+.package.json.swp
+.DS_Store
+
 # Logs
 logs
 *.log
