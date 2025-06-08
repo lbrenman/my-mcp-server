@@ -4,50 +4,33 @@ This setup provides both **stdio** (for Claude Desktop) and **HTTP** (for web in
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+* Install Dependencies
 ```bash
 npm install
 ```
+* Running the Server
+  * For Claude Desktop (stdio mode)
+    ```bash
+    # Default mode - runs in stdio mode for Claude Desktop
+    npm start
 
-### 2. Create Directory Structure
-```
-your-project/
-├── server.js          # Your hybrid MCP server
-├── package.json       # Dependencies
-├── public/            # Web client files
-│   └── index.html     # Web client interface
-└── README.md          # This file
-```
+    # Or explicitly specify stdio mode
+    npm run start:stdio
+    ```
+  * For Web Development (HTTP mode)
+    ```bash
+    # Run in HTTP mode for web clients
+    npm run start:http
 
-### 3. Save the Web Client
-Save the HTML web client as `public/index.html` in your project directory.
-
-## 🔧 Running the Server
-
-### For Claude Desktop (stdio mode)
-```bash
-# Default mode - runs in stdio mode for Claude Desktop
-npm start
-
-# Or explicitly specify stdio mode
-npm run start:stdio
-```
-
-### For Web Development (HTTP mode)
-```bash
-# Run in HTTP mode for web clients
-npm run start:http
-
-# Or with auto-reload for development
-npm run dev
-```
-
-### Auto-Detection Mode
-```bash
-# Automatically detects mode based on environment
-# Uses HTTP if PORT env var is set, otherwise stdio
-PORT=3000 npm start
-```
+    # Or with auto-reload for development
+    npm run dev
+    ```
+  * Auto-Detection Mode
+    ```bash
+    # Automatically detects mode based on environment
+    # Uses HTTP if PORT env var is set, otherwise stdio
+    PORT=3000 npm start
+    ```
 
 ## 🌐 Claude Desktop Configuration
 
@@ -60,6 +43,19 @@ Add this to your Claude Desktop MCP settings:
       "command": "node",
       "args": ["/path/to/your/server.js"],
       "env": {}
+    }
+  }
+}
+```
+
+For example:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "/Users/leorbrenman/.nvm/versions/node/v20.15.0/bin/node",
+      "args": ["/Users/leorbrenman/.../my-mcp-server/server.js"]
     }
   }
 }
