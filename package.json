@@ -1,16 +1,34 @@
 {
-  "name": "my-mcp-server",
+  "name": "hybrid-mcp-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "MCP Server with stdio and HTTP support",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "start:stdio": "node server.js stdio",
+    "start:http": "node server.js http",
+    "dev": "nodemon server.js http",
+    "test": "node -e \"console.log('Server starting in test mode'); require('./server.js')\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
-    "axios": "^1.9.0"
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0",
+    "express": "^4.18.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "http",
+    "stdio",
+    "claude"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

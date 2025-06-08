@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Web Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status.connected {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .status.disconnected {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .status.connecting {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background: white;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .tool-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tool-card:hover {
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .tool-card.selected {
+            background: linear-gradient(135deg, #ddd6fe, #c4b5fd);
+            border-color: #8b5cf6;
+        }
+
+        .tool-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .tool-description {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+
+        .log-container {
+            grid-column: 1 / -1;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            border: 1px solid #374151;
+        }
+
+        .log::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 4px;
+        }
+
+        .log::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 4px;
+        }
+
+        .log::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .connection-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .args-examples {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .args-examples h4 {
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .example {
+            background: white;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            cursor: pointer;
+            border: 1px solid #e5e7eb;
+            transition: background-color 0.2s ease;
+        }
+
+        .example:hover {
+            background: #f3f4f6;
+        }
+
+        .example:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .connection-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                justify-content: stretch;
+            }
+            
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff40;
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 MCP Web Client</h1>
+            <p>Connect to your Model Context Protocol server via HTTP</p>
+        </div>
+
+        <div id="status" class="status disconnected">
+            🔴 Disconnected - Enter server URL to connect
+        </div>
+
+        <div class="main-grid">
+            <!-- Connection Card -->
+            <div class="card">
+                <h3>🌐 Connection</h3>
+                <div class="form-group">
+                    <label for="serverUrl">Server URL</label>
+                    <input type="text" id="serverUrl" placeholder="http://localhost:3000/mcp" 
+                           value="http://localhost:3000/mcp">
+                </div>
+                <div class="connection-grid">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="apiKey">API Key (optional)</label>
+                        <input type="password" id="apiKey" placeholder="Enter API key if required">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn" onclick="connect()" id="connectBtn">
+                            🔌 Connect
+                        </button>
+                        <button class="btn btn-secondary" onclick="disconnect()" id="disconnectBtn" disabled>
+                            🔌 Disconnect
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools Card -->
+            <div class="card">
+                <h3>🛠️ Available Tools</h3>
+                <div id="toolsList" class="tools-grid">
+                    <div style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 20px;">
+                        Connect to server to see available tools
+                    </div>
+                </div>
+                <button class="btn btn-small" onclick="listTools()" id="listToolsBtn" disabled style="margin-top: 12px;">
+                    🔄 Refresh Tools
+                </button>
+            </div>
+
+            <!-- Tool Execution Card -->
+            <div class="card">
+                <h3>⚡ Execute Tool</h3>
+                <div class="form-group">
+                    <label for="toolName">Tool Name</label>
+                    <input type="text" id="toolName" placeholder="Select a tool or enter name manually">
+                </div>
+                <div class="form-group">
+                    <label for="toolArgs">Arguments (JSON)</label>
+                    <textarea id="toolArgs" placeholder='{"name": "World"}'></textarea>
+                    <div id="argsExamples" class="args-examples" style="display: none;">
+                        <h4>💡 Example Arguments:</h4>
+                        <div id="examplesList"></div>
+                    </div>
+                </div>
+                <button class="btn" onclick="callTool()" id="callToolBtn" disabled>
+                    ⚡ Execute Tool
+                </button>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card">
+                <h3>🚀 Quick Actions</h3>
+                <div class="button-group" style="flex-wrap: wrap;">
+                    <button class="btn btn-small" onclick="quickTest('hello', {name: 'World'})">
+                        👋 Hello Test
+                    </button>
+                    <button class="btn btn-small" onclick="quickTest('get_joke', {})">
+                        😄 Get Joke
+                    </button>
+                    <button class="btn btn-small" onclick="quickTest('calculate_tip', {amount: 50, percentage: 18})">
+                        💰 Calculate Tip
+                    </button>
+                    <button class="btn btn-small" onclick="quickTest('nasa_apod', {})">
+                        🚀 NASA APOD
+                    </button>
+                </div>
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="weatherCity">Quick Weather Check</label>
+                    <div class="connection-grid">
+                        <input type="text" id="weatherCity" placeholder="Enter city name" value="New York">
+                        <button class="btn btn-small" onclick="quickWeather()">
+                            🌤️ Get Weather
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Card -->
+        <div class="card log-container">
+            <h3>📋 Activity Log</h3>
+            <div id="log" class="log"></div>
+            <div class="button-group" style="margin-top: 12px;">
+                <button class="btn btn-secondary btn-small" onclick="clearLog()">
+                    🗑️ Clear Log
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="exportLog()">
+                    📁 Export Log
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MCPHttpClient {
+            constructor() {
+                this.serverUrl = '';
+                this.apiKey = '';
+                this.connected = false;
+                this.tools = [];
+                this.messageId = 0;
+            }
+
+            async connect(url, apiKey = '') {
+                this.serverUrl = url.replace(/\/$/, ''); // Remove trailing slash
+                this.apiKey = apiKey;
+                
+                try {
+                    this.updateStatus('connecting', '🟡 Connecting...');
+                    
+                    // Test connection with initialize
+                    const response = await this.request('initialize', {
+                        protocolVersion: '2024-11-05',
+                        capabilities: { tools: {} },
+                        clientInfo: {
+                            name: 'mcp-web-client',
+                            version: '1.0.0'
+                        }
+                    });
+
+                    this.connected = true;
+                    this.updateStatus('connected', '🟢 Connected to MCP Server');
+                    this.log('✅ Successfully connected to MCP server');
+                    this.log('Server info:', response.serverInfo);
+                    
+                    return true;
+                } catch (error) {
+                    this.connected = false;
+                    this.updateStatus('disconnected', '🔴 Connection failed');
+                    this.log(`❌ Connection failed: ${error.message}`);
+                    throw error;
+                }
+            }
+
+            disconnect() {
+                this.connected = false;
+                this.serverUrl = '';
+                this.apiKey = '';
+                this.tools = [];
+                this.updateStatus('disconnected', '🔴 Disconnected');
+                this.log('🔌 Disconnected from server');
+                this.updateToolsList();
+            }
+
+            async request(method, params = {}) {
+                if (!this.serverUrl) {
+                    throw new Error('Not connected to server');
+                }
+
+                const id = ++this.messageId;
+                const payload = {
+                    jsonrpc: '2.0',
+                    id: id,
+                    method: method,
+                    params: params
+                };
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                if (this.apiKey) {
+                    headers['Authorization'] = `Bearer ${this.apiKey}`;
+                }
+
+                this.log(`📤 Request: ${method}`, payload);
+
+                const response = await fetch(this.serverUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                this.log(`📥 Response: ${method}`, data);
+
+                if (data.error) {
+                    throw new Error(`MCP Error: ${data.error.message}`);
+                }
+
+                return data.result;
+            }
+
+            async listTools() {
+                try {
+                    const result = await this.request('tools/list');
+                    this.tools = result.tools || [];
+                    this.updateToolsList();
+                    this.log(`📋 Found ${this.tools.length} tools`);
+                    return this.tools;
+                } catch (error) {
+                    this.log(`❌ Error listing tools: ${error.message}`);
+                    throw error;
+                }
+            }
+
+            async callTool(name, args = {}) {
+                try {
+                    const result = await this.request('tools/call', {
+                        name: name,
+                        arguments: args
+                    });
+                    this.log(`🔧 Tool "${name}" executed successfully`);
+                    return result;
+                } catch (error) {
+                    this.log(`❌ Error calling tool "${name}": ${error.message}`);
+                    throw error;
+                }
+            }
+
+            updateStatus(type, message) {
+                const status = document.getElementById('status');
+                status.className = `status ${type}`;
+                status.textContent = message;
+            }
+
+            updateToolsList() {
+                const toolsList = document.getElementById('toolsList');
+                if (this.tools.length === 0) {
+                    toolsList.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #6b7280; padding: 20px;">No tools available</div>';
+                } else {
+                    toolsList.innerHTML = this.tools.map(tool => `
+                        <div class="tool-card" onclick="selectTool('${tool.name}', ${JSON.stringify(tool).replace(/"/g, '&quot;')})">
+                            <div class="tool-name">${tool.name}</div>
+                            <div class="tool-description">${tool.description || 'No description'}</div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            log(message, data = null) {
+                const logElement = document.getElementById('log');
+                const timestamp = new Date().toLocaleTimeString();
+                let logMessage = `[${timestamp}] ${message}`;
+                
+                if (data && typeof data === 'object') {
+                    logMessage += '\n' + JSON.stringify(data, null, 2);
+                }
+                
+                logElement.textContent += logMessage + '\n\n';
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+
+        // Global client instance
+        const mcpClient = new MCPHttpClient();
+
+        // Tool argument examples
+        const TOOL_EXAMPLES = {
+            hello: [
+                '{"name": "World"}',
+                '{"name": "Alice"}',
+                '{"name": "Bob"}'
+            ],
+            get_weather: [
+                '{"city": "New York"}',
+                '{"city": "London", "units": "metric"}',
+                '{"city": "Tokyo", "units": "imperial"}'
+            ],
+            get_joke: [
+                '{}'
+            ],
+            fetch_url: [
+                '{"url": "https://api.github.com/users/octocat"}',
+                '{"url": "https://httpbin.org/get", "method": "GET"}'
+            ],
+            calculate_tip: [
+                '{"amount": 50}',
+                '{"amount": 100, "percentage": 20}',
+                '{"amount": 25.50, "percentage": 15}'
+            ],
+            nasa_apod: [
+                '{}',
+                '{"date": "2024-01-01"}',
+                '{"api_key": "DEMO_KEY"}'
+            ],
+            fetch_json_enhanced: [
+                '{"url": "https://api.github.com/users/octocat"}',
+                '{"url": "https://jsonplaceholder.typicode.com/posts/1"}'
+            ]
+        };
+
+        // UI Functions
+        async function connect() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!serverUrl) {
+                alert('Please enter a server URL');
+                return;
+            }
+
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            try {
+                connectBtn.disabled = true;
+                connectBtn.innerHTML = '<div class="loading"></div> Connecting...';
+                
+                await mcpClient.connect(serverUrl, apiKey);
+                
+                // Enable buttons and auto-load tools
+                document.getElementById('listToolsBtn').disabled = false;
+                document.getElementById('callToolBtn').disabled = false;
+                disconnectBtn.disabled = false;
+                connectBtn.innerHTML = '🔌 Connect';
+                
+                await listTools();
+                
+            } catch (error) {
+                alert(`Connection failed: ${error.message}`);
+                connectBtn.innerHTML = '🔌 Connect';
+            } finally {
+                connectBtn.disabled = false;
+            }
+        }
+
+        function disconnect() {
+            mcpClient.disconnect();
+            
+            // Disable buttons
+            document.getElementById('listToolsBtn').disabled = true;
+            document.getElementById('callToolBtn').disabled = true;
+            document.getElementById('disconnectBtn').disabled = true;
+            
+            // Clear tool selection
+            document.getElementById('toolName').value = '';
+            document.getElementById('toolArgs').value = '';
+            hideArgsExamples();
+        }
+
+        async function listTools() {
+            const btn = document.getElementById('listToolsBtn');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loading"></div> Loading...';
+                await mcpClient.listTools();
+            } catch (error) {
+                alert(`Failed to list tools: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function callTool() {
+            const toolName = document.getElementById('toolName').value.trim();
+            const toolArgsText = document.getElementById('toolArgs').value.trim();
+            
+            if (!toolName) {
+                alert('Please enter a tool name');
+                return;
+            }
+
+            let toolArgs = {};
+            if (toolArgsText) {
+                try {
+                    toolArgs = JSON.parse(toolArgsText);
+                } catch (error) {
+                    alert('Invalid JSON in tool arguments');
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('callToolBtn');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loading"></div> Executing...';
+                
+                const result = await mcpClient.callTool(toolName, toolArgs);
+                mcpClient.log(`🎯 Tool result for "${toolName}":`, result);
+                
+                // Display result in a more user-friendly way
+                if (result.content && result.content.length > 0) {
+                    const firstContent = result.content[0];
+                    if (firstContent.type === 'text') {
+                        mcpClient.log(`📄 Result text: ${firstContent.text}`);
+                    }
+                }
+                
+            } catch (error) {
+                alert(`Failed to call tool: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function selectTool(toolName, toolData) {
+            document.getElementById('toolName').value = toolName;
+            
+            // Clear existing selection
+            document.querySelectorAll('.tool-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Mark selected tool
+            event.currentTarget.classList.add('selected');
+            
+            // Show argument examples
+            showArgsExamples(toolName);
+            
+            // Clear previous args
+            document.getElementById('toolArgs').value = '';
+        }
+
+        function showArgsExamples(toolName) {
+            const examplesContainer = document.getElementById('argsExamples');
+            const examplesList = document.getElementById('examplesList');
+            
+            if (TOOL_EXAMPLES[toolName]) {
+                examplesList.innerHTML = TOOL_EXAMPLES[toolName].map(example => 
+                    `<div class="example" onclick="useExample('${example.replace(/'/g, "\\'")}')">${example}</div>`
+                ).join('');
+                examplesContainer.style.display = 'block';
+            } else {
+                examplesContainer.style.display = 'none';
+            }
+        }
+
+        function hideArgsExamples() {
+            document.getElementById('argsExamples').style.display = 'none';
+        }
+
+        function useExample(example) {
+            document.getElementById('toolArgs').value = example;
+        }
+
+        async function quickTest(toolName, args) {
+            if (!mcpClient.connected) {
+                alert('Please connect to server first');
+                return;
+            }
+            
+            document.getElementById('toolName').value = toolName;
+            document.getElementById('toolArgs').value = JSON.stringify(args, null, 2);
+            await callTool();
+        }
+
+        async function quickWeather() {
+            const city = document.getElementById('weatherCity').value.trim();
+            if (!city) {
+                alert('Please enter a city name');
+                return;
+            }
+            
+            await quickTest('get_weather', { city: city });
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        function exportLog() {
+            const log = document.getElementById('log').textContent;
+            const blob = new Blob([log], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mcp-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Auto-connect on page load if URL is present
+        window.addEventListener('load', () => {
+            const urlInput = document.getElementById('serverUrl');
+            if (urlInput.value.trim()) {
+                mcpClient.log('🌐 Page loaded - ready to connect to MCP server');
+            }
+        });
+
+        // Handle Enter key in inputs
+        document.getElementById('serverUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') connect();
+        });
+
+        document.getElementById('apiKey').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') connect();
+        });
+
+        document.getElementById('weatherCity').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') quickWeather();
+        });
+
+        // Auto-resize textarea
+        document.getElementById('toolArgs').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    </script>
+</body>
+</html>

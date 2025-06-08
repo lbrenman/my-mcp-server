@@ -9,6 +9,9 @@ const {
   ErrorCode,
 } = require('@modelcontextprotocol/sdk/types.js');
 const axios = require('axios');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
 
 // Create server instance
 const server = new Server(
@@ -23,7 +26,7 @@ const server = new Server(
   }
 );
 
-// Define available tools
+// Define available tools (same as before)
 const TOOLS = [
   {
     name: 'hello',
@@ -140,7 +143,7 @@ const TOOLS = [
   },
 ];
 
-// Helper function to get weather
+// Helper functions (same as before)
 async function getWeather(city, units = 'metric') {
   try {
     const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather`, {
@@ -176,7 +179,6 @@ async function getWeather(city, units = 'metric') {
   }
 }
 
-// Helper function to get a programming joke
 async function getJoke() {
   try {
     const response = await axios.get('https://official-joke-api.appspot.com/jokes/programming/random');
@@ -202,7 +204,6 @@ async function getJoke() {
   }
 }
 
-// Helper function to fetch content from URL
 async function fetchUrl(url, method = 'GET') {
   try {
     const response = await axios({
@@ -231,7 +232,6 @@ async function fetchUrl(url, method = 'GET') {
   }
 }
 
-// Helper function to calculate tip
 function calculateTip(amount, percentage = 15) {
   const tipAmount = (amount * percentage) / 100;
   const total = amount + tipAmount;
@@ -246,7 +246,6 @@ function calculateTip(amount, percentage = 15) {
   };
 }
 
-// FIXED: NASA APOD function with proper error handling and image support
 async function getNasaApod(date, apiKey = 'DEMO_KEY') {
   try {
     console.error(`Fetching NASA APOD with date: ${date}, apiKey: ${apiKey}`);
@@ -264,15 +263,12 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
     const apod = response.data;
     console.error(`NASA APOD response:`, JSON.stringify(apod, null, 2));
 
-    // Validate required fields
     if (!apod.title || !apod.explanation || !apod.date) {
       throw new Error('Invalid API response: missing required fields');
     }
 
-    // Build the content array
     const content = [];
 
-    // Add main text content
     let mainText = `🚀 **NASA Astronomy Picture of the Day**\n\n`;
     mainText += `**Date:** ${apod.date}\n`;
     mainText += `**Title:** ${apod.title}\n\n`;
@@ -287,9 +283,7 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
       text: mainText,
     });
 
-    // Handle different media types
     if (apod.media_type === 'image') {
-      // Try to add the image - use regular URL for better compatibility
       const imageUrl = apod.url || apod.hdurl;
       
       if (imageUrl) {
@@ -303,7 +297,6 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
             alt_text: apod.title || 'NASA APOD Image'
           });
           
-          // Also provide the image URL as text
           content.push({
             type: 'text',
             text: `**Image URL:** ${imageUrl}\n**HD URL:** ${apod.hdurl || 'Not available'}`,
@@ -344,7 +337,7 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
     
     if (error.message.includes('timeout')) {
       errorMessage += '\n\nThe NASA API is taking too long to respond. Please try again.';
-    } else if (error.message.includes('rate limit') || error.response?.status === 429) {
+    } else if (error.response?.status === 429) {
       errorMessage += '\n\nAPI rate limit exceeded. The DEMO_KEY has limited usage. Try again in a moment or get a free API key from https://api.nasa.gov/';
     }
 
@@ -359,12 +352,10 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
   }
 }
 
-// Enhanced JSON fetcher
 async function fetchJsonEnhanced(url) {
   try {
     const response = await axios.get(url, { timeout: 10000 });
     
-    // Pretty print the JSON
     const jsonString = JSON.stringify(response.data, null, 2);
     
     return {
@@ -387,17 +378,8 @@ async function fetchJsonEnhanced(url) {
   }
 }
 
-// List available tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: TOOLS,
-  };
-});
-
-// Handle tool calls
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
+// Common tool execution logic
+async function executeTool(name, args) {
   try {
     switch (name) {
       case 'hello':
@@ -435,14 +417,172 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     console.error(`Error executing tool ${name}:`, error);
     throw new McpError(ErrorCode.InternalError, `Error executing tool: ${error.message}`);
   }
+}
+
+// Set up MCP server handlers
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: TOOLS,
+  };
 });
 
-// Start the server
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('Enhanced MCP Server started successfully!');
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  return await executeTool(name, args);
+});
+
+// HTTP Server Setup
+function setupHttpServer() {
+  const app = express();
+  
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  // Health check
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // MCP Initialize endpoint
+  app.post('/mcp/initialize', (req, res) => {
+    res.json({
+      jsonrpc: '2.0',
+      id: req.body.id,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: {
+          name: 'my-mcp-server',
+          version: '1.0.0'
+        }
+      }
+    });
+  });
+
+  // MCP Tools List endpoint
+  app.post('/mcp/tools/list', (req, res) => {
+    res.json({
+      jsonrpc: '2.0',
+      id: req.body.id,
+      result: {
+        tools: TOOLS
+      }
+    });
+  });
+
+  // MCP Tools Call endpoint
+  app.post('/mcp/tools/call', async (req, res) => {
+    try {
+      const { name, arguments: args } = req.body.params;
+      const result = await executeTool(name, args);
+      
+      res.json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        result: result
+      });
+    } catch (error) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        error: {
+          code: error.code || -32603,
+          message: error.message || 'Internal error'
+        }
+      });
+    }
+  });
+
+  // Generic MCP endpoint that handles all MCP methods
+  app.post('/mcp', async (req, res) => {
+    try {
+      const { method, params, id } = req.body;
+
+      let result;
+      
+      switch (method) {
+        case 'initialize':
+          result = {
+            protocolVersion: '2024-11-05',
+            capabilities: {
+              tools: {}
+            },
+            serverInfo: {
+              name: 'my-mcp-server',
+              version: '1.0.0'
+            }
+          };
+          break;
+          
+        case 'tools/list':
+          result = {
+            tools: TOOLS
+          };
+          break;
+          
+        case 'tools/call':
+          result = await executeTool(params.name, params.arguments);
+          break;
+          
+        default:
+          throw new Error(`Unknown method: ${method}`);
+      }
+
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: result
+      });
+    } catch (error) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        error: {
+          code: error.code || -32603,
+          message: error.message || 'Internal error'
+        }
+      });
+    }
+  });
+
+  return app;
 }
+
+// Main function
+async function main() {
+  const args = process.argv.slice(2);
+  const mode = args[0] || 'auto';
+
+  if (mode === 'http' || (mode === 'auto' && process.env.PORT)) {
+    // HTTP mode
+    const app = setupHttpServer();
+    const port = process.env.PORT || 3000;
+    
+    app.listen(port, () => {
+      console.error(`MCP HTTP Server running on port ${port}`);
+      console.error(`Health check: http://localhost:${port}/health`);
+      console.error(`MCP endpoint: http://localhost:${port}/mcp`);
+    });
+  } else {
+    // Stdio mode (for Claude Desktop)
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('MCP Server started in stdio mode for Claude Desktop');
+  }
+}
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection at:', promise, 'reason:', reason);
+});
 
 main().catch((error) => {
   console.error('Server error:', error);
