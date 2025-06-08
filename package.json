@@ -3,18 +3,20 @@
   "version": "1.0.0",
   "description": "MCP Server with stdio and HTTP support",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "start:stdio": "node server.js stdio",
     "start:http": "node server.js http",
     "dev": "nodemon server.js http",
-    "test": "node -e \"console.log('Server starting in test mode'); require('./server.js')\""
+    "test": "node -e \"console.log('Server starting in test mode'); import('./server.js')\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
     "axios": "^1.6.0",
     "express": "^4.18.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

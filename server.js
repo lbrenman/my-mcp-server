@@ -1,17 +1,65 @@
 #!/usr/bin/env node
 
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const {
+// Load environment variables from .env file
+import 'dotenv/config';
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   McpError,
   ErrorCode,
-} = require('@modelcontextprotocol/sdk/types.js');
-const axios = require('axios');
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+} from '@modelcontextprotocol/sdk/types.js';
+import axios from 'axios';
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Environment Configuration
+const CONFIG = {
+  // API Keys
+  openWeatherApiKey: process.env.OPENWEATHER_API_KEY || null,
+  nasaApiKey: process.env.NASA_API_KEY || 'DEMO_KEY',
+  
+  // Server Settings
+  port: process.env.PORT || 3000,
+  nodeEnv: process.env.NODE_ENV || 'development',
+  
+  // External Service URLs (can be overridden)
+  services: {
+    openWeatherUrl: process.env.OPENWEATHER_URL || 'https://api.openweathermap.org/data/2.5/weather',
+    jokeApiUrl: process.env.JOKE_API_URL || 'https://official-joke-api.appspot.com/jokes/programming/random',
+    nasaApodUrl: process.env.NASA_APOD_URL || 'https://api.nasa.gov/planetary/apod'
+  },
+  
+  // Timeouts and Limits
+  timeouts: {
+    http: parseInt(process.env.HTTP_TIMEOUT) || 10000,
+    nasa: parseInt(process.env.NASA_TIMEOUT) || 15000
+  }
+};
+
+// Startup validation
+function validateConfiguration() {
+  const warnings = [];
+  
+  // Check for missing API keys
+  if (!CONFIG.openWeatherApiKey) {
+    warnings.push('⚠️  OPENWEATHER_API_KEY not set - weather tool will use demo responses');
+  }
+  
+  if (CONFIG.nasaApiKey === 'DEMO_KEY') {
+    warnings.push('⚠️  NASA_API_KEY using demo key - may hit rate limits');
+  }
+  
+  return { warnings };
+}
 
 // Create server instance
 const server = new Server(
@@ -26,7 +74,7 @@ const server = new Server(
   }
 );
 
-// Define available tools (same as before)
+// Define available tools
 const TOOLS = [
   {
     name: 'hello',
@@ -121,8 +169,8 @@ const TOOLS = [
         },
         api_key: {
           type: 'string',
-          description: 'NASA API key (optional, defaults to DEMO_KEY)',
-          default: 'DEMO_KEY',
+          description: 'NASA API key (optional, uses configured key or DEMO_KEY)',
+          default: CONFIG.nasaApiKey,
         },
       },
     },
@@ -143,15 +191,28 @@ const TOOLS = [
   },
 ];
 
-// Helper functions (same as before)
+// Helper functions with environment variable support
 async function getWeather(city, units = 'metric') {
   try {
-    const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather`, {
+    // Check if API key is configured
+    if (!CONFIG.openWeatherApiKey) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Weather service not configured. To use this feature, get a free API key from OpenWeatherMap and add OPENWEATHER_API_KEY=your_key to your .env file. For now, here's a demo response: ${city} is probably sunny and 22°C! ☀️`,
+          },
+        ],
+      };
+    }
+
+    const response = await axios.get(CONFIG.services.openWeatherUrl, {
       params: {
         q: city,
         units: units,
-        appid: 'your_api_key_here'
-      }
+        appid: CONFIG.openWeatherApiKey
+      },
+      timeout: CONFIG.timeouts.http
     });
 
     const weather = response.data;
@@ -168,11 +229,23 @@ async function getWeather(city, units = 'metric') {
       ],
     };
   } catch (error) {
+    console.error('Weather API error:', error.message);
+    
+    let errorMessage = `Error fetching weather for ${city}: `;
+    
+    if (error.response?.status === 401) {
+      errorMessage += 'Invalid API key. Please check your OPENWEATHER_API_KEY.';
+    } else if (error.response?.status === 404) {
+      errorMessage += 'City not found. Please check the spelling.';
+    } else {
+      errorMessage += error.message;
+    }
+    
     return {
       content: [
         {
           type: 'text',
-          text: `Weather service unavailable. To use this feature, get a free API key from OpenWeatherMap and replace 'your_api_key_here' in the code. For now, here's a demo response: ${city} is probably sunny and 22°C! ☀️`,
+          text: errorMessage,
         },
       ],
     };
@@ -181,7 +254,9 @@ async function getWeather(city, units = 'metric') {
 
 async function getJoke() {
   try {
-    const response = await axios.get('https://official-joke-api.appspot.com/jokes/programming/random');
+    const response = await axios.get(CONFIG.services.jokeApiUrl, {
+      timeout: CONFIG.timeouts.http
+    });
     const joke = response.data[0];
     
     return {
@@ -209,7 +284,7 @@ async function fetchUrl(url, method = 'GET') {
     const response = await axios({
       method: method,
       url: url,
-      timeout: 10000,
+      timeout: CONFIG.timeouts.http,
     });
 
     return {
@@ -246,18 +321,21 @@ function calculateTip(amount, percentage = 15) {
   };
 }
 
-async function getNasaApod(date, apiKey = 'DEMO_KEY') {
+async function getNasaApod(date, apiKey) {
   try {
-    console.error(`Fetching NASA APOD with date: ${date}, apiKey: ${apiKey}`);
+    // Use provided API key, or fall back to configured key
+    const finalApiKey = apiKey || CONFIG.nasaApiKey;
     
-    const params = { api_key: apiKey };
+    console.error(`Fetching NASA APOD with date: ${date}, apiKey: ${finalApiKey}`);
+    
+    const params = { api_key: finalApiKey };
     if (date) {
       params.date = date;
     }
 
-    const response = await axios.get('https://api.nasa.gov/planetary/apod', { 
+    const response = await axios.get(CONFIG.services.nasaApodUrl, { 
       params,
-      timeout: 15000 
+      timeout: CONFIG.timeouts.nasa 
     });
     
     const apod = response.data;
@@ -354,7 +432,7 @@ async function getNasaApod(date, apiKey = 'DEMO_KEY') {
 
 async function fetchJsonEnhanced(url) {
   try {
-    const response = await axios.get(url, { timeout: 10000 });
+    const response = await axios.get(url, { timeout: CONFIG.timeouts.http });
     
     const jsonString = JSON.stringify(response.data, null, 2);
     
@@ -442,7 +520,30 @@ function setupHttpServer() {
 
   // Health check
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      config: {
+        hasOpenWeatherKey: !!CONFIG.openWeatherApiKey,
+        nasaApiKey: CONFIG.nasaApiKey === 'DEMO_KEY' ? 'DEMO_KEY' : 'CONFIGURED',
+        environment: CONFIG.nodeEnv
+      }
+    });
+  });
+
+  // Configuration info endpoint
+  app.get('/config/info', (req, res) => {
+    res.json({
+      hasOpenWeatherKey: !!CONFIG.openWeatherApiKey,
+      nasaApiKey: CONFIG.nasaApiKey === 'DEMO_KEY' ? 'DEMO_KEY' : 'CONFIGURED',
+      environment: CONFIG.nodeEnv,
+      services: {
+        openWeatherUrl: CONFIG.services.openWeatherUrl,
+        jokeApiUrl: CONFIG.services.jokeApiUrl,
+        nasaApodUrl: CONFIG.services.nasaApodUrl
+      },
+      timeouts: CONFIG.timeouts
+    });
   });
 
   // MCP Initialize endpoint
@@ -557,6 +658,15 @@ async function main() {
   const args = process.argv.slice(2);
   const mode = args[0] || 'auto';
 
+  // Validate configuration and show warnings
+  const { warnings } = validateConfiguration();
+  
+  if (warnings.length > 0) {
+    console.error('📝 Configuration Notes:');
+    warnings.forEach(warning => console.error(`  ${warning}`));
+    console.error('');
+  }
+
   if (mode === 'http' || (mode === 'auto' && process.env.PORT)) {
     // HTTP mode
     const app = setupHttpServer();
@@ -566,12 +676,13 @@ async function main() {
       console.error(`MCP HTTP Server running on port ${port}`);
       console.error(`Health check: http://localhost:${port}/health`);
       console.error(`MCP endpoint: http://localhost:${port}/mcp`);
+      console.error(`Config info: http://localhost:${port}/config/info`);
     });
   } else {
     // Stdio mode (for Claude Desktop)
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('MCP Server started in stdio mode for Claude Desktop');
+    console.error('Enhanced MCP Server started successfully!');
   }
 }
 
