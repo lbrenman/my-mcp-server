@@ -379,7 +379,10 @@
                 </div>
                 <div class="form-group">
                     <label for="toolArgs">Arguments (JSON)</label>
-                    <textarea id="toolArgs" placeholder='{"name": "World"}'></textarea>
+                    <textarea id="toolArgs" placeholder='{"name": "World"}' rows="3"></textarea>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                        💡 Tip: Click a tool above to auto-fill with default arguments, or use the examples below
+                    </div>
                     <div id="argsExamples" class="args-examples" style="display: none;">
                         <h4>💡 Example Arguments:</h4>
                         <div id="examplesList"></div>
@@ -704,11 +707,21 @@
             let toolArgs = {};
             if (toolArgsText) {
                 try {
-                    toolArgs = JSON.parse(toolArgsText);
+                    // Clean up the JSON text
+                    const cleanedJson = toolArgsText.trim();
+                    toolArgs = JSON.parse(cleanedJson);
+                    
+                    // Log what we're parsing for debugging
+                    mcpClient.log(`🔍 Parsing arguments: "${cleanedJson}"`);
+                    mcpClient.log(`🔍 Parsed to:`, toolArgs);
                 } catch (error) {
-                    alert('Invalid JSON in tool arguments');
+                    alert(`Invalid JSON in tool arguments: ${error.message}\n\nReceived: "${toolArgsText}"`);
+                    mcpClient.log(`❌ JSON Parse Error: ${error.message}`);
+                    mcpClient.log(`❌ Failed to parse: "${toolArgsText}"`);
                     return;
                 }
+            } else {
+                mcpClient.log(`🔍 No arguments provided, using empty object`);
             }
 
             const btn = document.getElementById('callToolBtn');
@@ -751,8 +764,27 @@
             // Show argument examples
             showArgsExamples(toolName);
             
-            // Clear previous args
-            document.getElementById('toolArgs').value = '';
+            // Set default arguments based on tool
+            const defaultArgs = getDefaultArgs(toolName);
+            document.getElementById('toolArgs').value = defaultArgs;
+            
+            // Auto-resize textarea
+            const textarea = document.getElementById('toolArgs');
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        function getDefaultArgs(toolName) {
+            const defaults = {
+                hello: '{"name": "World"}',
+                get_weather: '{"city": "New York"}',
+                get_joke: '{}',
+                fetch_url: '{"url": "https://api.github.com/users/octocat"}',
+                calculate_tip: '{"amount": 50, "percentage": 15}',
+                nasa_apod: '{}',
+                fetch_json_enhanced: '{"url": "https://jsonplaceholder.typicode.com/posts/1"}'
+            };
+            return defaults[toolName] || '{}';
         }
 
         function showArgsExamples(toolName) {
@@ -774,7 +806,15 @@
         }
 
         function useExample(example) {
-            document.getElementById('toolArgs').value = example;
+            const textarea = document.getElementById('toolArgs');
+            textarea.value = example.replace(/\\'/g, "'");
+            
+            // Auto-resize textarea
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            
+            // Focus on textarea for immediate editing
+            textarea.focus();
         }
 
         async function quickTest(toolName, args) {
@@ -785,6 +825,12 @@
             
             document.getElementById('toolName').value = toolName;
             document.getElementById('toolArgs').value = JSON.stringify(args, null, 2);
+            
+            // Auto-resize textarea
+            const textarea = document.getElementById('toolArgs');
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            
             await callTool();
         }
 
@@ -836,10 +882,26 @@
             if (e.key === 'Enter') quickWeather();
         });
 
-        // Auto-resize textarea
+        // Auto-resize textarea and add validation
         document.getElementById('toolArgs').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
+            
+            // Real-time JSON validation
+            const value = this.value.trim();
+            if (value) {
+                try {
+                    JSON.parse(value);
+                    this.style.borderColor = '#10b981'; // Green for valid JSON
+                    this.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+                } catch (error) {
+                    this.style.borderColor = '#ef4444'; // Red for invalid JSON
+                    this.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+                }
+            } else {
+                this.style.borderColor = '#e5e7eb'; // Default
+                this.style.boxShadow = 'none';
+            }
         });
     </script>
 </body>
