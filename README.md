@@ -55,7 +55,10 @@ For example:
   "mcpServers": {
     "my-mcp-server": {
       "command": "/Users/leorbrenman/.nvm/versions/node/v20.15.0/bin/node",
-      "args": ["/Users/leorbrenman/.../my-mcp-server/server.js"]
+      "args": ["/Users/leorbrenman/Dropbox/Work/Current Projects/AI/MCP/Nodejs_Tutorial/my-mcp-server/server.js"],
+      "env": {
+        "OPENWEATHER_API_KEY": "MY OPENWEATHERAPI KEY"
+      }
     }
   }
 }
