@@ -153,6 +153,8 @@ const TOOLS = [
 
 // Helper functions
 async function getWeather(city, units = 'metric') {
+  console.log('OpenWeather MCP Tool Invoked');
+
   try {
     // Get API key from environment variable
     const apiKey = process.env.OPENWEATHER_API_KEY;
